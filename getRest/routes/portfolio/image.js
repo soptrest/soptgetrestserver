@@ -9,7 +9,7 @@ var router = express.Router();
 const utils=require('../../module/utils');
 const statusCode=require('../../module/statusCode');
 const responseMessage=require('../../module/responseMessage');
-const db=require('../../config/pool');
+const db=require('../../utils/pool');
 const upload=require('../../config/multer');
 
 /* GET home page. */

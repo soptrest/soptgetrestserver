@@ -15,10 +15,15 @@ module.exports = {
     PORTFOLIO_SAVE_FAIL: "포트폴리오 저장 실패",
     PORTFOLIO_READ_FAIL: "포트폴리오 읽기 실패",
     PORTFOLIO_READ_SUCCESS : "포트폴리오 읽기 성공",
+    PORTFOLIO_DETAIL_READ_FAIL: "포트폴리오 상세 읽기 실패",
+    PORTFOLIO_DETAIL_REQD_SUCCESS:"포트폴리오 상세 읽기 성공",
+    PORTFOLIO_DELETE_FAIL_NOT_EXIST:"포트폴리오 미존재",
+    PORTFOLIO_DELETE_FAIL:"포트폴리오 삭제 실패",
+    PORTFOLIO_DELETE_SUCCESS:"포트폴리오 삭제 성공",
+    PORTFOLIO_DELETE_FAIL_PARAMS:"포트폴리오 번호 누락",
+    PORTFOLIO_UPDATE_SUCCESS:"포트폴리오 수정 성공",
+    PORTFOLIO_UPDATE_FAIL:"포트폴리오 수정 실패",
 
-    STUDENT_SELECT_SUCCESS: "학생 조회 성공",
-    NO_STUDENT: "존재하지 않는 학생입니다",
-    STUDENT_SELECT_FAIL: "학생 조회 실패",
 
     POST_SLECET_FAILE:"같은 제목이 존재 합니다.",
     POST_SAVE_FAILE:"게시글 저장 실패",
