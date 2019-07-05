@@ -5,14 +5,16 @@ const cheerio = require('cheerio');
 
 var router = express.Router();
 
-const db = require('../../utils/pool');
+const db = require('../../module/pool');
+
+
 
 router.get('/', async (req, res, next) => {
-    /*사람인 api 가져오기
+    /*
+        사람인 api 가져오기
         코스닥, 유가증권 상장사만 가져옴
         한 페이지에 100개
     */
-
     let jobDataArr = [];
     let companyDataArr = [];
     await axios.get('http://api.saramin.co.kr/job-search?bbs_gb=1&stock=kospi+kosdaq&start=0&count=100')

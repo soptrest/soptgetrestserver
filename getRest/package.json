@@ -11,6 +11,8 @@
     "cheerio": "^1.0.0-rc.3",
     "cheerio-httpcli": "^0.7.4",
     "cookie-parser": "^1.4.4",
+    "crypto": "^1.0.1",
+    "crypto-promise": "^2.1.0",
     "debug": "~2.6.9",
     "express": "^4.17.1",
     "growl": "^1.10.5",

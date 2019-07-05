@@ -7,11 +7,11 @@ var express = require('express');
 var router = express.Router();
 var moment=require('moment');
 
-const utils=require('../../module/utils');
-const statusCode=require('../../module/statusCode');
-const responseMessage=require('../../module/responseMessage');
-const db=require('../../utils/pool');
-const upload=require('../../config/multer');
+const utils = require('../../utils/utils');
+const statusCode = require('../../utils/statusCode');
+const responseMessage = require('../../utils/responseMessage');
+const db = require('../../module/pool');
+const upload = require('../../config/multer');
 
 router.get('/',async(req,res)=>{
     res.render('index', { title: 'portfolio' });

@@ -6,10 +6,10 @@ Title: Server architecture from AWS RDS database using MYSQL platform for GetRes
 var express = require('express');
 var router = express.Router();
 
-const utils=require('../../module/utils');
-const statusCode=require('../../module/statusCode');
-const responseMessage=require('../../module/responseMessage');
-const db=require('../../utils/pool');
+const utils=require('../../utils/utils');
+const statusCode=require('../../utils/statusCode');
+const responseMessage=require('../../utils/responseMessage');
+const db=require('../../module/pool');
 const upload=require('../../config/multer');
 
 /* GET home page. */
