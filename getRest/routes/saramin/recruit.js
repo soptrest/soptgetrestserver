@@ -7,83 +7,124 @@ var router = express.Router();
 
 const db = require('../../utils/pool');
 
-router.get('/', function (req, res, next) {
-    //사람인 api 가져오기
-    axios.get('http://api.saramin.co.kr/job-search?fields=posting-date+expiration-date&sort=da&start=1&count=3')
+router.get('/', async (req, res, next) => {
+    /*사람인 api 가져오기
+        코스닥, 유가증권 상장사만 가져옴
+        한 페이지에 100개
+    */
+
+    let jobDataArr = [];
+    let companyDataArr = [];
+    await axios.get('http://api.saramin.co.kr/job-search?bbs_gb=1&stock=kospi+kosdaq&start=0&count=100')
         .then(async response => {
             const xml2json = xmljs.xml2json(response['data'], { compact: true, spaces: 4 });
             const testData = JSON.parse(xml2json);
             const recruitData = testData['job-search']['jobs']['job'];
             //모든 data를 map함수를 통해 for문을 돈다
             recruitData.map(async data => {
+                /*
+                    MySQL DB 등록을 위한 Column을 외부 Api에서 받아옴
+                */
                 const recruitPosition = data['position'];
-
-                //html 크롤링
-                await axios.get(data['url']['_text'])
-                .then(html => {
-                    const $ = cheerio.load(html.data);
-                    console.log(html);
-                    const companyLogo = $("div.logo img")
-                    console.log(companyLogo);
-                })
-                
-                // const companyData = {
-                //     companyName : "1",
-                //     companyImage : "1",
-                //     companyUrl : data["company"][""]
-                // }
-
-                var dateO = new Date(data['opening-timestamp']["_text"] * 1000);
+                //공고 시작일
+                const dateO = new Date(data['opening-timestamp']["_text"] * 1000);
                 dateO.setHours(dateO.getHours() + 9);
-                var dateE = new Date(data['expiration-timestamp']["_text"] * 1000);
+                //공고 만료일
+                const dateE = new Date(data['expiration-timestamp']["_text"] * 1000);
                 dateE.setHours(dateE.getHours() + 9);
-                // axios.get('http://www.saramin.co.kr/zf_user/company-info/view?csn=1108153652&popup_yn=y')
-                // .then(html => {
-                //   const $ = cheerio.load(html.data);
-                //   const bodyList = $(".thumb_company .inner_thumb img")['0']['attribs']['src']
-                //   console.log(bodyList);
-                // })
-                const jobData = {
+                //공고 게시일
+                const dateP = new Date(data['posting-timestamp']["_text"] * 1000);
+                //현재 시간
+                let dateNow = new Date();
+                const btns = dateNow.getTime() - dateP.getTime();
+
+                //현재시간과 공고 시간의 차이
+                const bth = btns / (1000 * 60 * 60);
+
+                /*
+                    회사 정보 api 가져오기
+                */
+                const companyAttr = data['company']['name']['_attributes'];
+                let companyData = {
+                    companyName: data['company']['name']['_cdata'],
+                }
+                //url 제공할 경우
+                if (companyAttr) {
+                    companyData['companyUrl'] = companyAttr['href'];
+                }
+
+                /*
+                    중복 DB 등록 방지를 위한 최근 등록 1시간 게시물만 등록
+                    (현재 시각 - 게시 시간 <= 1시간)만 등록
+                */
+
+                let jobData = {
                     recruitJobCategory: recruitPosition["job-category"]["_text"],
                     recruitJobType: recruitPosition["job-type"]["_text"],
                     recruitLocation: recruitPosition["location"]["_cdata"].split(',')[0].split(" &gt; ").join(' '),
                     recruitStartDate: dateO.toString(),
                     recruitExpireDate: dateE.toString(),
-                    // recruitImg : 
                     recruitTitle: recruitPosition["title"]["_cdata"],
                     recruitSalary: data['salary']['_text'],
-                    companyIdx : 1,
                     recruitExperienceLevel: recruitPosition['experience-level']['_text'],
                     recruitRequiredExperienceLevel: recruitPosition['required-education-level']['_text'],
                     recruitURL: data['url']['_text']
                 }
-                const arrayJobData = Object.keys(jobData).concat(Object.values(jobData));
-                
-                let recruitInsertQuery = `INSERT INTO recruit (?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!) VALUES ('?!', '?!', '?!', '?!', '?!','?!', '?!', '?!', '?!', '?!', '?!')`
-                arrayJobData.map(data => {
-                    recruitInsertQuery = recruitInsertQuery.replace('?!', data);
-                })
-                console.log(recruitInsertQuery);
-                // const recruitResultQuery = await db.queryParam_None(recruitInsertQuery);
-                // await console.log(recruitResultQuery);
-                // console.log(jobData);
 
-                // const recruitCompanyURL = data['company']['name']['_attributes'];
-                // if(recruitCompanyURL) {
-                //   recruitCompanyURL['href']
-                // }
-                // const recruitCompanyName = data['company']['name']['_cdata'];
-                // console.log(recruitCompanyName);
-
-
+                if (bth <= 24) {
+                    jobDataArr.push(jobData);
+                    companyDataArr.push(companyData);
+                }
             })
-            // console.log(recruitPosition);
-
-
-
-            res.send(testData['job-search']['jobs']['job']);
-            res.end();
         })
+
+    /* 
+        api 중 기업 url을 제공하는 데이터에 대하여 company logo 및 url 매핑 및 company DB Insert
+        parameter는 companyJson파일
+        해당 company DB의 Idx는 jobData Json에 Insert
+    */
+    await Promise.all(companyDataArr.map(async (data, i) => {
+        if (data.companyUrl) {
+            await axios.get(data.companyUrl)
+                .then((companyHtml) => {
+                    const $ = cheerio.load(companyHtml.data);
+                    const companyLogo = $('div.title_info > div.thumb_company').find('span.inner_thumb > img').attr('src');
+                    data['companyImage'] = companyLogo;
+                })
+        } else {
+            data['companyUrl'] = undefined;
+            data['companyImage'] = undefined;
+        }
+        /*
+            Query문의 문자를 Json의 Key-Value 형태를 배열 행태로
+            로 변환해서 QueryParam_None 이용
+        */
+        const arrayCompanyData = Object.keys(data).concat(Object.values(data));
+        let companyInsertQuery = `INSERT INTO company (?!, ?!, ?!) VALUES ('?!', '?!', '?!')`
+
+        await Promise.all(arrayCompanyData.map(jsonData => {
+            companyInsertQuery = companyInsertQuery.replace('?!', jsonData);
+        }));
+        console.log(companyInsertQuery);
+        const companyResultQuery = await db.queryParam_None(companyInsertQuery);
+        // console.log(companyResultQuery);
+        jobDataArr[i]['companyIdx'] = await companyResultQuery['insertId'];
+    }))
+
+    /*
+        위의 function으로 입력된 jobData를 insert
+    */
+    await Promise.all(jobDataArr.map(async data => {
+        const arrayJobData = Object.keys(data).concat(Object.values(data));
+        let recruitInsertQuery = `INSERT INTO recruit (?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!) VALUES ('?!', '?!', '?!', '?!', '?!','?!', '?!', '?!', '?!', '?!', '?!')`
+        arrayJobData.map(jsonData => {
+            recruitInsertQuery = recruitInsertQuery.replace('?!', jsonData);
+        });
+        const recruitResultQuery = await db.queryParam_None(recruitInsertQuery);
+        // console.log(recruitResultQuery);
+    }))
+    res.send(jobDataArr);
+    res.end();
 });
 
 module.exports = router;

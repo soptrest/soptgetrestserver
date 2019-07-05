@@ -1,7 +1,6 @@
 var express = require('express');
-var jsonToCsv = require('convert-json-to-csv');
 var cheerio = require('cheerio');
-var axios = require('axios');
+var request = require('sync-request');
 
 var db = require('../utils/pool');
 var router = express.Router();
@@ -9,12 +8,12 @@ var router = express.Router();
 
 /* GET home page. */
 router.get('/', (req, res, next) => {
-  axios.get('http://www.saramin.co.kr/zf_user/company-info/view?csn=1108153652&popup_yn=y')
-  .then(html => {
-    const $ = cheerio.load(html.data);
-    const bodyList = $(".thumb_company .inner_thumb img")['0']['attribs']['src']
-    console.log(bodyList);
-  })
+  const url = 'http://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=36521907&utm_source=job-search-api&utm_medium=api&utm_campaign=saramin-job-search-api'
+  const response = request('GET', url);
+  const $ = cheerio.load(response.getBody());
+  const $content = $('div#content').children('div.wrap_jview')
+  console.log($content.children());
+  
 })
 
 router.use('/portfolio',require('./portfolio'));
