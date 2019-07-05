@@ -73,7 +73,7 @@ router.post('/',upload.fields([{name:'portfolioImg'}]),async(req,res)=>{
 
         var userIdx=req.params.userIdx;
         const portfolioSelectQuery='SELECT portfolioIdx,portfolioTitle,portfolioStartDate,portfolioExpireDate,portfolioCategory,portfolioImg FROM portfolio';
-        const portfolioSelectResult=await db.queryParam_Parse(portfolioSelectQuery,portfolioIdx);
+        const portfolioSelectResult=await db.queryParam_Parse(portfolioSelectQuery,userIdx);
 
         if(!portfolioSelectResult){
             res.status(200).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_READ_FAIL));
