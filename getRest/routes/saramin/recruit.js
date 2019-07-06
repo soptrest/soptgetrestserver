@@ -73,7 +73,7 @@ router.get('/', async (req, res, next) => {
                     recruitURL: data['url']['_text']
                 }
 
-                if (bth <= 24) {
+                if (bth <= 48) {
                     jobDataArr.push(jobData);
                     companyDataArr.push(companyData);
                 }
