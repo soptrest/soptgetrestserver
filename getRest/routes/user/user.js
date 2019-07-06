@@ -19,7 +19,7 @@ router.post('/', async (req, res) => {
         userPassword : req.body.userPassword
     }
 
-    const selectQuery = `SELECT * FROM user WHERE userEmail = ${userData.userEmail}`;
+    const selectQuery = `SELECT * FROM user WHERE userEmail = '${userData.userEmail}'`;
     const insertQuery = `INSERT INTO user (?!, ?!, ?!, ?!) VALUES ('?!', '?!', '?!', '?!')`;
 
     /* 
@@ -28,6 +28,7 @@ router.post('/', async (req, res) => {
     if (!userData.userName || !userData.userEmail || !userData.userPassword) {
         res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NULL_VALUE));
     } else {
+
         const emailCheck = await db.queryParam_None(selectQuery);
         if(!(emailCheck == undefined)) {
             res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.ALREADY_USER));
@@ -35,13 +36,11 @@ router.post('/', async (req, res) => {
             const userEncryption = await encrytion.encrytion(userData['userPassword']);
             userData['userPassword'] = userEncryption['hashedPassword'];
             userData['userSalt'] = userEncryption['salt'];
-            
 
             const insertRecruitQuery = await jsontosql.parseJson(insertQuery, userData);
-            console.log(insertRecruitQuery);
             const insertResult = await db.queryParam_None(insertRecruitQuery);
             
-            if(!(insertResult == undefined)){
+            if((insertResult == undefined)){
                 res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST,resMessage.NULL_VALUE));
             } else {
                 res.status(201).send(utils.successTrue(statusCode.CREATED, resMessage.CREATED_USER));
