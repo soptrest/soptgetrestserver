@@ -9,8 +9,6 @@ const resMessage = require('../../utils/responseMessage');
 const encryption = require('../../module/encrytionModule');
 const jwt = require("../../config/jwt");
 
-<<<<<<< Updated upstream
-=======
 /*
     METHOD : POST
     url : /login
@@ -18,7 +16,6 @@ const jwt = require("../../config/jwt");
     입력 : userEmail, userPassword
     출력 : userIdx, token
 */
->>>>>>> Stashed changes
 router.post('/', async (req, res) => {
     const userEmail = req.body.userEmail;
     const userPassword = req.body.userPassword;

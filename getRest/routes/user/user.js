@@ -37,7 +37,6 @@ router.post('/', async (req, res) => {
     if (!userData.userName || !userData.userEmail || !userData.userPassword) {
         res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NULL_VALUE));
     } else {
-
         const emailCheck = await db.queryParam_None(selectQuery);
         if (!(emailCheck[0] == undefined)) {
             res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.ALREADY_USER));
@@ -48,15 +47,9 @@ router.post('/', async (req, res) => {
 
             const insertRecruitQuery = await jsontosql.parseJson(insertQuery, userData);
             const insertResult = await db.queryParam_None(insertRecruitQuery);
-<<<<<<< Updated upstream
-            
-            if((insertResult == undefined)){
-                res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST,resMessage.NULL_VALUE));
-=======
 
             if ((insertResult == undefined)) {
                 res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NULL_VALUE));
->>>>>>> Stashed changes
             } else {
                 res.status(201).send(utils.successTrue(statusCode.CREATED, resMessage.CREATED_USER));
             }
@@ -95,7 +88,7 @@ router.delete('/', async (req, res) => {
 })
 
 /*
-    METHOD : DELETE
+    METHOD : PUT
     url : /users/info
     회원정보 수정
     Authorization : token
@@ -118,5 +111,27 @@ router.put('/info', async (req, res) => {
     }
 })
 
+/*
+    METHOD : PUT
+    url : /users/password
+    회원정보 수정
+    Authorization : token
+    입력 : userPassword
+    출력 : 
+*/
+router.put('/password', async (req, res) => {
+    const returnedData = await tokenVerify.isLoggedin(req.headers.authorization, res);
+    const userData = req.body;
+
+    //비밀번호 미입력
+    if(!userData.userPassword) {
+        res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NULL_VALUE));
+    } else if (returnedData != -1) {
+        const userEncryption = await encryption.encrytion(userData['userPassword']);
+        const updateUserQuery = `UPDATE user SET userPassword = '${userEncryption['hashedPassword']}', userSalt = '${userEncryption['salt']}' WHERE userIdx = ${returnedData.userIdx}`;
+        await db.queryParam_None(updateUserQuery);
+        res.status(200).send(utils.successTrue(statusCode.OK, resMessage.UPDATE_USER));
+    }
+})
 
 module.exports = router;
