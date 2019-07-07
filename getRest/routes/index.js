@@ -6,14 +6,12 @@ var db = require('../module/pool');
 var router = express.Router();
 
 
-/* GET home page. */
+/* Test Page */
 router.get('/', (req, res, next) => {
-  const url = 'http://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=36521907&utm_source=job-search-api&utm_medium=api&utm_campaign=saramin-job-search-api'
-  const response = request('GET', url);
-  const $ = cheerio.load(response.getBody());
-  
-  const $content = $('div#content').children('div.wrap_jview')
-  console.log($content.children());
+  const a = 1;
+  const b = 2;
+  const abs = a + '-' + (b + 1);
+  console.log(abs);
   
 })
 
