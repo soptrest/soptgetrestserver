@@ -23,5 +23,6 @@ router.use('/users',require('./user'));
 router.use('/recruit',require('./recruit'));
 router.use('/saramin', require('./saramin'));
 router.use('/login', require('./login'));
+router.use('/home', require('./home'));
 
 module.exports = router;
