@@ -7,16 +7,25 @@ const resMessage = require('../../utils/responseMessage');
 const utils = require('../../utils/utils');
 const db = require('../../module/pool');
 const jsontosql = require('../../module/jsontosql');
-const encrytion = require('../../module/encrytionModule');
+const encryption = require('../../module/encrytionModule');
+const jwt = require("../../config/jwt");
+const tokenVerify = require("../../utils/tokenVerify")
 
 //external modules
 
+/*
+    METHOD : POST
+    url : /users
+    회원가입
+    입력 : userName, userPassword, userPassword
+    출력 : 
+*/
 
 router.post('/', async (req, res) => {
     let userData = {
-        userName : req.body.userName,
-        userEmail : req.body.userEmail,
-        userPassword : req.body.userPassword
+        userName: req.body.userName,
+        userEmail: req.body.userEmail,
+        userPassword: req.body.userPassword
     }
 
     const selectQuery = `SELECT * FROM user WHERE userEmail = '${userData.userEmail}'`;
@@ -30,25 +39,84 @@ router.post('/', async (req, res) => {
     } else {
 
         const emailCheck = await db.queryParam_None(selectQuery);
-        if(!(emailCheck == undefined)) {
+        if (!(emailCheck[0] == undefined)) {
             res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.ALREADY_USER));
         } else {
-            const userEncryption = await encrytion.encrytion(userData['userPassword']);
+            const userEncryption = await encryption.encrytion(userData['userPassword']);
             userData['userPassword'] = userEncryption['hashedPassword'];
             userData['userSalt'] = userEncryption['salt'];
 
             const insertRecruitQuery = await jsontosql.parseJson(insertQuery, userData);
             const insertResult = await db.queryParam_None(insertRecruitQuery);
+<<<<<<< Updated upstream
             
             if((insertResult == undefined)){
                 res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST,resMessage.NULL_VALUE));
+=======
+
+            if ((insertResult == undefined)) {
+                res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NULL_VALUE));
+>>>>>>> Stashed changes
             } else {
                 res.status(201).send(utils.successTrue(statusCode.CREATED, resMessage.CREATED_USER));
             }
         }
     }
-   
-
 });
+
+/*
+    METHOD : DELETE
+    url : /users
+    회원정보 삭제
+    Authorization : token
+    입력 : userPassword
+    출력 : 
+*/
+router.delete('/', async (req, res) => {
+    const returnedData = await tokenVerify.isLoggedin(req.headers.authorization, res);
+    const userData = req.body;
+    console.log(returnedData);
+    if(!userData.userPassword) {
+        res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NULL_VALUE));
+    } else if (returnedData != -1) {
+        const selectUserQuery = `SELECT * FROM user WHERE userIdx = '${returnedData.userIdx}'`;
+        const selectUserResult = await db.queryParam_None(selectUserQuery);
+        const hashedPw = await encryption.onlyEncrytion(userData.userPassword, selectUserResult[0].userSalt);
+
+        //DB안의 비밀번호와 요청 비번 검증
+        if (selectUserResult[0].userPassword == hashedPw.hashedPassword) {
+            const deleteUserQuery = `UPDATE user SET userName = '', userEmail =  '', userPassword = '', userSalt = '' WHERE userIdx = ${selectUserResult[0].userIdx}`;
+            await db.queryParam_None(deleteUserQuery);
+            res.status(200).send(utils.successTrue(statusCode.OK, resMessage.DELETE_USER));
+        } else {
+            res.status(403).send(utils.successFalse(statusCode.FORBIDDEN, resMessage.MISS_MATCH_PW));
+        }
+    }
+})
+
+/*
+    METHOD : DELETE
+    url : /users/info
+    회원정보 수정
+    Authorization : token
+    입력 : userName
+    출력 : 
+*/
+router.put('/info', async (req, res) => {
+    const returnedData = await tokenVerify.isLoggedin(req.headers.authorization, res);
+    const userData = req.body;
+
+    //토큰 만료 상태
+    if(!userData.userName) {
+        res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NULL_VALUE));
+    } else if (returnedData != -1) {
+        const selectUserQuery = `SELECT * FROM user WHERE userIdx = '${returnedData.userIdx}'`;
+        const selectUserResult = await db.queryParam_None(selectUserQuery);
+        const updateUserQuery = `UPDATE user SET userName = '${userData.userName}' WHERE userIdx = ${selectUserResult[0].userIdx}`;
+        await db.queryParam_None(updateUserQuery);
+        res.status(200).send(utils.successTrue(statusCode.OK, resMessage.UPDATE_USER));
+    }
+})
+
 
 module.exports = router;
