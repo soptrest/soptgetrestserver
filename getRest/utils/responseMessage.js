@@ -4,12 +4,16 @@ module.exports = {
     ID_OR_PW_NULL_VALUE: "아이디/비밀번호 값이 없습니다.",
     CREATED_USER: "회원 가입 성공",
     DELETE_USER: "회원 탈퇴 성공",
+    UPDATE_USER: "회원 정보 수정 성공",
 
     ALREADY_USER: "이미 회원입니다.",
     NO_USER: "존재하지 않는 회원입니다.",
     MISS_MATCH_PW: "비밀번호가 맞지 않습니다.",
     LOGIN_SUCCESS: "로그인 성공",
     LOGIN_FAIL: "로그인 실패",
+
+    HOME_GRAPH_SUCCESS : "홈 그래프 성공",
+    HOME_PORTFOLIO_SUCCESS : "홈 포트폴리오 성공",
 
     PORTFOLIO_SAVE_SUCCESS: "포트폴리오 저장 성공",
     PORTFOLIO_SAVE_FAIL: "포트폴리오 저장 실패",
@@ -40,6 +44,7 @@ module.exports = {
     CREATE_TOKEN: "토큰 발급 완료.",
     REFRESH_TOKEN: "토큰 재발급 완료.",
 
+    NULL_VALUE : "필요한 값이 없습니다",
     NO_SELECT_AUTHORITY: "조회 권한 없음.",
     USER_SELECTED: "회원 조회 성공."
 };
