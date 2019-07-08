@@ -26,19 +26,20 @@ router.post('/', async (req, res) => {
         res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NULL_VALUE));
     } else {
         const selectUserResult = await db.queryParam_None(selectUserQuery);
-
+        
+        
         // DB내에서 같은 Id가 없을 경우
         if(!selectUserResult) {
             res.status(404).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NO_USER));
         } else{
             const hashedPw = await encryption.onlyEncrytion(userPassword, selectUserResult[0].userSalt);
             if(selectUserResult[0].userPassword == hashedPw.hashedPassword){
-
+                
                 let nowTimeDate = new Date();
                 nowTimeDate.setDate(nowTimeDate.getDate() + 1);
                 const timestamp = nowTimeDate.getTime() / 1000;
-                const userToken = toString(jwt.sign(selectUserResult[0]));
-                const returnData = {
+                const userToken = jwt.sign(selectUserResult[0]);
+                const returnData = {    
                     userIdx : selectUserResult[0].userIdx,
                     userToken : userToken.token,
                     timestamp : timestamp
