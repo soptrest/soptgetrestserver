@@ -32,12 +32,16 @@ router.post('/', async (req, res) => {
             res.status(404).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NO_USER));
         } else{
             const hashedPw = await encryption.onlyEncrytion(userPassword, selectUserResult[0].userSalt);
-
             if(selectUserResult[0].userPassword == hashedPw.hashedPassword){
-                const userToken = jwt.sign(selectUserResult[0]);
+
+                let nowTimeDate = new Date();
+                nowTimeDate.setDate(nowTimeDate.getDate() + 1);
+                const timestamp = nowTimeDate.getTime() / 1000;
+                const userToken = toString(jwt.sign(selectUserResult[0]));
                 const returnData = {
                     userIdx : selectUserResult[0].userIdx,
-                    userToken : userToken.token
+                    userToken : userToken.token,
+                    timestamp : timestamp
                 }
                 res.status(200).send(utils.successTrue(statusCode.OK, resMessage.LOGIN_SUCCESS, returnData));
             } else {

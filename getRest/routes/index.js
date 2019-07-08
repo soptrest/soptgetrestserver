@@ -8,11 +8,6 @@ var router = express.Router();
 
 /* Test Page */
 router.get('/', (req, res, next) => {
-  const a = 1;
-  const b = 2;
-  const abs = a + '-' + (b + 1);
-  console.log(abs);
-  
 })
 
 router.use('/portfolio',require('./portfolio'));
