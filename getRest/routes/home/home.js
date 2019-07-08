@@ -9,6 +9,15 @@ const statusCode = require('../../utils/statusCode');
 
 const monthQuarter = [0, 3, 6, 9, 12];
 
+/*
+    METHOD : GET
+    url : /home/portfolio
+    홈 포트폴리오 조회
+    authorization : token
+    입력 : date
+    출력 : portfolioIdx, portfolioTitle, portfolioStartDate, portfolioExpireDate
+*/
+
 router.get('/portfolio', async (req, res) => {
     const returnedData = await tokenVerify.isLoggedin(req.headers.authorization, res);
     const homeDate = req.body.date;
@@ -61,6 +70,15 @@ router.get('/portfolio', async (req, res) => {
     }
 
 })
+
+/*
+    METHOD : GET
+    url : /home
+    홈 그래프
+    authorization : token
+    입력 : 
+    출력 : date, count
+*/
 
 router.get('/', async (req, res) => {    
     const returnedData = await tokenVerify.isLoggedin(req.headers.authorization, res);

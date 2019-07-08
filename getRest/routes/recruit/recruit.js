@@ -33,12 +33,12 @@ router.get('/filter', async (req, res) => {
             selectRecruitQuery += ` AND recruitJobTypeCode = '${query.recruitJobType}'`;
         }
         if (query.recruitLocation) {
-            selectRecruitQuery += ` AND recruitLocationCode = '${query.recruitLocation}'`;
+            selectRecruitQuery += ` AND FLOOR(recruitLocationCode/1000) = '${query.recruitLocation/1000}'`;
         }
         if (query.recruitJobCategory) {
-            selectRecruitQuery += ` AND recruitJobCategoryCode = '${query.recruitJobCategory}'`;
+            selectRecruitQuery += ` AND FLOOR(recruitJobCategoryCode/100) = '${query.recruitJobCategory}'`;
         }
-        console.log(selectRecruitQuery);
+        
         const selectRecruitResult = await db.queryParam_None(selectRecruitQuery);
 
         let recruitArr = [];
