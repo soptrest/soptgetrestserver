@@ -2,7 +2,7 @@ var express = require('express');
 var router = express.Router();
 
 const tokenVerify = require('../../utils/tokenVerify');
-const db = require('../../config/pool');
+const db = require('../../module/pool');
 const utils = require('../../utils/utils');
 const resMessage = require('../../utils/responseMessage');
 const statusCode = require('../../utils/statusCode');
