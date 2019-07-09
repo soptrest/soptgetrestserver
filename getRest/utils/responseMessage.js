@@ -20,6 +20,7 @@ module.exports = {
 
     HOME_GRAPH_SUCCESS : "홈 그래프 성공",
     HOME_PORTFOLIO_SUCCESS : "홈 포트폴리오 성공",
+    HOME_PORTFOLIO_ZERO : "작성한 포트폴리오가 없습니다",
 
     PORTFOLIO_SAVE_SUCCESS: "포트폴리오 저장 성공",
     PORTFOLIO_SAVE_FAIL: "포트폴리오 저장 실패",
