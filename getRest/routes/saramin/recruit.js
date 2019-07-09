@@ -97,7 +97,7 @@ router.get('/', async (req, res, next) => {
                     recruitJobTypeCode : recruitPosition['job-type']['_attributes']['code']
                 }
 
-                if (bth <= 12) {
+                if ( bth <= 24 ) {
                     jobDataArr.push(jobData);
                     companyDataArr.push(companyData);
                 }

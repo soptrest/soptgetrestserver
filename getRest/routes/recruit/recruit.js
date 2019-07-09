@@ -22,11 +22,11 @@ router.get('/filter', async (req, res) => {
     if (returnedData != -1) {
         const searchDate = req.body.date;
         const query = req.query;
-        //req date 형식(YYYY.MM.DD)
+        //req date 형식(YYYY/MM/DD)
 
-        const splitSearchDate = searchDate.split('.');
-        const queryStartDate = splitSearchDate[0] + ' ' + splitSearchDate[1] + ' ' + splitSearchDate[2] + ' 00:00:00';
-        const queryEndDate = splitSearchDate[0] + ' ' + splitSearchDate[1] + ' ' + splitSearchDate[2] + ' 23:59:59';
+        const splitSearchDate = searchDate.split('/');
+        const queryStartDate = splitSearchDate[0] + '/' + splitSearchDate[1] + '/' + splitSearchDate[2] + ' 00:00:00';
+        const queryEndDate = splitSearchDate[0] + '/' + splitSearchDate[1] + '/' + splitSearchDate[2] + ' 23:59:59';
 
         let selectRecruitQuery = `SELECT * FROM recruit WHERE recruitStartDate <= '${queryEndDate}' AND recruitExpireDate >= '${queryStartDate}'`
         if(query.recruitJobType) {
@@ -40,7 +40,7 @@ router.get('/filter', async (req, res) => {
         }
         
         const selectRecruitResult = await db.queryParam_None(selectRecruitQuery);
-        let recruitArr = recruitArrParsing.insertRecruitArr(selectRecruitResult);
+        let recruitArr = await recruitArrParsing.insertRecruitArr(selectRecruitResult);
         res.status(200).send(utils.successTrue(statusCode.OK, resMessage.RECRUIT_FILTER_SUCCESS, recruitArr));
     } 
 });
@@ -58,15 +58,15 @@ router.get('/like', async (req, res) => {
     const returnedData = await tokenVerify.isLoggedin(req.headers.authorization, res);
     if (returnedData != -1) {
         const searchDate = req.body.date;
-        //req date 형식(YYYY.MM.DD)
+        //req date 형식(YYYY/MM/DD)
 
-        const splitSearchDate = searchDate.split('.');
-        const queryStartDate = splitSearchDate[0] + ' ' + splitSearchDate[1] + ' ' + splitSearchDate[2] + ' 00:00:00';
-        const queryEndDate = splitSearchDate[0] + ' ' + splitSearchDate[1] + ' ' + splitSearchDate[2] + ' 23:59:59';
+        const splitSearchDate = searchDate.split('/');
+        const queryStartDate = splitSearchDate[0] + '/' + splitSearchDate[1] + '/' + splitSearchDate[2] + ' 00:00:00';
+        const queryEndDate = splitSearchDate[0] + '/' + splitSearchDate[1] + '/' + splitSearchDate[2] + ' 23:59:59';
 
-        let selectRecruitQuery = `SELECT * FROM recruit JOIN recruitLike ON recruit.recruitIdx = recruitLike.recruitIdx WHERE recruitStartDate <= '${queryEndDate}' AND recruitExpireDate >= '${queryStartDate}'`
-        
+        let selectRecruitQuery = `SELECT * FROM recruit JOIN recruitLike ON recruit.recruitIdx = recruitLike.recruitIdx WHERE recruitStartDate <= '${queryEndDate}' AND recruitExpireDate >= '${queryStartDate}' AND userIdx = ${returnedData.userIdx}`
         const selectRecruitResult = await db.queryParam_None(selectRecruitQuery);
+        console.log(selectRecruitResult);
         let recruitArr = await recruitArrParsing.insertRecruitArr(selectRecruitResult);
     
         res.status(200).send(utils.successTrue(statusCode.OK, resMessage.RECRUIT_LIKE_SELECT_SUCCESS, recruitArr));
@@ -129,8 +129,9 @@ router.get('/detail/:recruitIdx', async (req, res) => {
         const selectRecruitDetailResult = await db.queryParam_None(selectRecruitQuery);
 
         const splitResultDate = selectRecruitDetailResult[0]['recruitExpireDate'].split(' ');
-        const splitResultTime = splitResultDate[3].split(':');
-        const convertedExpireDate = '~' + splitResultDate[1] + '월 ' + splitResultDate[2] + '일 ' + splitResultTime[0] + '시 ' + splitResultTime[1] + '분'
+        const splitSeperateDate = splitResultDate[0].split('/');
+        const splitResultTime = splitResultDate[1].split(':');
+        const convertedExpireDate = '~' + splitSeperateDate[1] + '월 ' + splitSeperateDate[2] + '일 ' + splitResultTime[0] + '시 ' + splitResultTime[1] + '분'
 
 
         const jobDetailJson = {
@@ -164,9 +165,9 @@ router.get('/', async (req, res) => {
         const searchDate = req.body.date;
         //req date 형식(YYYY.MM.DD)
 
-        const splitSearchDate = searchDate.split('.');
-        const queryStartDate = splitSearchDate[0] + ' ' + splitSearchDate[1] + ' ' + splitSearchDate[2] + ' 00:00:00';
-        const queryEndDate = splitSearchDate[0] + ' ' + splitSearchDate[1] + ' ' + splitSearchDate[2] + ' 23:59:59';
+        const splitSearchDate = searchDate.split('/');
+        const queryStartDate = splitSearchDate[0] + '/' + splitSearchDate[1] + '/' + splitSearchDate[2] + ' 00:00:00';
+        const queryEndDate = splitSearchDate[0] + '/' + splitSearchDate[1] + '/' + splitSearchDate[2] + ' 23:59:59';
 
         const selectRecruitQuery = `SELECT * FROM recruit WHERE recruitStartDate <= '${queryEndDate}' AND recruitExpireDate >= '${queryStartDate}'`
         const selectRecruitResult = await db.queryParam_None(selectRecruitQuery);
