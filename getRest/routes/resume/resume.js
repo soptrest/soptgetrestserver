@@ -6,7 +6,6 @@ Title: Server architecture from AWS RDS database using MYSQL platform for GetRes
 var express = require('express');
 var router = express.Router();
 var moment = require('moment');
-var math = require('math');
 const utils = require('../../utils/utils');
 const statusCode = require('../../utils/statusCode');
 const responseMessage = require('../../utils/responseMessage');
@@ -138,41 +137,55 @@ router.get('/:userIdx', async (req, res) => {
     }
 });
 
-// /**4. 나의 자소서 상세 조회*/
-// router.get('/:userIdx/:resumeIdx/:questionNum',async(req,res)=>{
-//     //1) questionTitle, 3) recruitJobType, 4) resumeContent 리턴해주자~
+/**3. 나의 자소서 상세 조회*/
+router.get('/:userIdx/:resumeIdx/:questionNum',async(req,res)=>{
+    //1) questionTitle, 3) recruitJobType, 4) resumeContent 리턴해주자~
+    if(!req.params.userIdx || !req.params.resumeIdx){
+        res.status(400).send(res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.NULL_VALUE)));      
+    }
+    else{
+        //1) questionTitle, questionIdx select ->resumeIdx로 recruitIdx 먼저 찾아와서 recruitIdx로 questionTitle, idx조회
+        const recruitIdxSelectQuery='SELECT recruitIdx FROM resume WHERE resumeIdx=? AND userIdx=?';
+        const recruitIdxSelectResult=await db.queryParam_Parse(recruitIdxSelectQuery, [req.params.resumeIdx, req.params.userIdx]);
 
-//     if(!req.params.userIdx || !req.params.resumeIdx){
-//         res.status(400).send(res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.NULL_VALUE)));      
-//     }
-//     else{
-//         const questionSelectQuery='SELECT questionIdx,questionTitle from resumeContent WHERE resumeIdx=? AND userIdx=? AND questionNum=?';
-//         const questionSelectResult=await db.queryParam_Arr(questionSelectQuery,[req.params.resumeIdx,req.params.userIdx,req.params.questionNum]);
+        const recruitIdx=recruitIdxSelectResult[0].recruitIdx;
+        
+        const questionSelectQuery='SELECT questionIdx,questionTitle from question WHERE recruitIdx=? AND questionNum=?';
+        const questionSelectResult=await db.queryParam_Arr(questionSelectQuery,[recruitIdx,req.params.questionNum]); 
 
-//         if(!questionSelectResult){
-//             res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.RESUME_DETAIL_SELECT_FAIL));
-//         }
-//         else{
-//             //questionTtitle 찾기
-//             const questionIdx=questionSelectResult[0].questionIdx;
-//             const recruitIdxSelectQuery='SELECT questionTitle FROM question WHERE resumeIdx=? AND userIdx=?';
-//             const recruitIdxSelectResult=await db.queryParam_Arr(recruitIdxSelectQuery,[resumeIdx,req.params.userIdx]);
-//             const recruitIdx=recruitIdxSelectResult[0].recruitIdx;
-//             console.log('recruitIdx: ');
-//             console.log(recruitIdx);
+        if(!questionSelectResult){
+            res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.RESUME_DETAIL_SELECT_FAIL));
+        }
+        else{
+            //보낼 data packet
+            const resumeDetailSend={
+                questionTitle:null,
+                questionIdx:null,
+                recruitJobType:null,
+                resumeContent:null
+            }
+            //questionTitle 찾기
+            const questionIdx=questionSelectResult[0].questionIdx;
+            const questionTitle=questionSelectResult[0].questionTitle; // 1) questionTitle
+            resumeDetailSend.questionIdx=questionIdx;
+            resumeDetailSend.questionTitle=questionTitle;
 
-//             //recruitJobType 찾기
-//             const recruitJobTypeSelectQuery='SELECT recruitJobType FROM recruit WHERE recruitIdx=?';
-//             const recruitJobTypeSelectResult=await db.queryParam_Parse(recruitJobTypeSelectQuery,recruitIdx);
-//             //console.log(recruitJobTypeSelectResult[0].recruitJobType);
-//             questionSelectResult.recruitJobType=recruitJobTypeSelectResult[0].recruitJobType;
-//             myresumeSelectResult[i].expireCheck=myresumeInfo.expireCheck;
+            //recruitJobType 찾기
+            const recruitJobTypeSelectQuery='SELECT recruitJobType FROM recruit WHERE recruitIdx=?';
+            const recruitJobTypeSelectResult=await db.queryParam_Parse(recruitJobTypeSelectQuery,recruitIdx);
+            
+            resumeDetailSend.recruitJobType=recruitJobTypeSelectResult[0].recruitJobType; //2) recruitJobType
+            
+            //3) questionContent 찾기 (resumeContent)
+            const questionContentSelectQuery='SELECT questionContent FROM resumeContent WHERE resumeIdx=? AND questionIdx=?';
+            const questionContentSelectResult=await db.queryParam_Arr(questionContentSelectQuery,[req.params.resumeIdx, questionIdx]);
+            resumeDetailSend.resumeContent=questionContentSelectResult[0].questionContent;
 
-//             res.status(200).send(utils.successTrue(statusCode.OK,responseMessage.RESUME_DETAIL_SELECT_SUCCESS, questionSelectResult));
-//         }
-//     }
-// });
-/*3. m나의 자소서 수정*/
+            res.status(200).send(utils.successTrue(statusCode.OK,responseMessage.RESUME_DETAIL_SELECT_SUCCESS, resumeDetailSend));
+        }
+    }
+});
+/*4. 나의 자소서 수정*/
 router.put('/:userIdx/:resumeIdx/:recruitIdx/:questionNum', async (req, res) => {
     //null 처리
     if (!req.params.userIdx || !req.params.resumeIdx || !req.params.questionNum || !req.body.questionContent || !req.params.recruitIdx) {
@@ -221,7 +234,7 @@ router.put('/:userIdx/:resumeIdx/:recruitIdx/:questionNum', async (req, res) => 
     }
 });
 
-/*3. 나의 자소서 삭제*/
+/*5. 나의 자소서 삭제*/
 router.delete('/:userIdx/:resumeIdx', async (req, res) => {
     //null 처리
     if (!req.params.userIdx || !req.params.resumeIdx) {
