@@ -6,6 +6,12 @@ module.exports = {
     DELETE_USER: "회원 탈퇴 성공",
     UPDATE_USER: "회원 정보 수정 성공",
 
+    RECRUIT_ALL_SUCCESS : "채용 공고 전체 조회 성공",
+    RECRUIT_FILTER_SUCCESS : "채용 공고 필터 조회 성공",
+    RECRUIT_LIKE_SUCCESS : "채용 공고 좋아요 성공",
+    RECRUIT_LIKE_SELECT_SUCCESS : "채용 공고 즐겨찾기 조회 성공",
+    RECRUIT_DETAIL_SUCCEESS : "채용 공고 상세 조회 성공",
+
     ALREADY_USER: "이미 회원입니다.",
     NO_USER: "존재하지 않는 회원입니다.",
     MISS_MATCH_PW: "비밀번호가 맞지 않습니다.",

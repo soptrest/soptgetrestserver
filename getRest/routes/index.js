@@ -6,9 +6,11 @@ var db = require('../module/pool');
 var router = express.Router();
 
 
-// /* Test Page */
-// router.get('/', (req, res, next) => {
-// })
+/* Test Page */
+router.get('/', async (req, res, next) => {
+    const q = `SELECT * FROM recruit AS rc JOIN recruitLike AS rl ON rc.recruitIdx = rl.recruitIdx`;
+    console.log(await db.queryParam_None(q));
+})
 
 router.use('/portfolio',require('./portfolio'));
 router.use('/resume',require('./resume'));
