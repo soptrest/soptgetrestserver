@@ -7,7 +7,10 @@ var router = express.Router();
 
 const db = require('../../module/pool');
 
-
+function pad(n, width) {
+    n = n + '';
+    return n.length >= width ? n : new Array(width - n.length + 1).join('0') + n;
+}
 
 router.get('/', async (req, res, next) => {
     /*
@@ -30,15 +33,33 @@ router.get('/', async (req, res, next) => {
                 const recruitPosition = data['position'];
                 //공고 시작일
                 const dateO = new Date(data['opening-timestamp']["_text"] * 1000);
-                dateO.setHours(dateO.getHours() + 9);
+                dateO.setHours(dateO.getHours());
                 //공고 만료일
                 const dateE = new Date(data['expiration-timestamp']["_text"] * 1000);
-                dateE.setHours(dateE.getHours() + 9);
+                dateE.setHours(dateE.getHours());
                 //공고 게시일
                 const dateP = new Date(data['posting-timestamp']["_text"] * 1000);
                 //현재 시간
                 let dateNow = new Date();
                 const btns = dateNow.getTime() - dateP.getTime();
+
+                const shortMonth = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                //시간 파싱
+                const splitDateO = dateO.toString().split(' ');
+                const splitDateE = dateE.toString().split(' ');
+
+                let numMonthO, numMonthE;
+                await Promise.all(shortMonth.map((data, iter) => {
+                    if(data == splitDateO[1]){
+                        numMonthO = pad(iter,2);
+                    }
+                    if(data == splitDateE[1]){
+                        numMonthE = pad(iter,2);
+                    }
+                }))
+
+                const parsedDateO = splitDateO[3] + '/' + numMonthO + '/' + splitDateO[2] + ' ' + splitDateO[4];
+                const parsedDateE = splitDateE[3] + '/' + numMonthE + '/' + splitDateE[2] + ' ' + splitDateE[4];
 
                 //현재시간과 공고 시간의 차이
                 const bth = btns / (1000 * 60 * 60);
@@ -57,27 +78,32 @@ router.get('/', async (req, res, next) => {
 
                 /*
                     중복 DB 등록 방지를 위한 최근 등록 1시간 게시물만 등록
-                    (현재 시각 - 게시 시간 <= 1시간)만 등록
+                    (현재 시각 - 게시 시간 <= 24시간)만 등록
                 */
 
                 let jobData = {
                     recruitJobCategory: recruitPosition["job-category"]["_text"],
                     recruitJobType: recruitPosition["job-type"]["_text"],
                     recruitLocation: recruitPosition["location"]["_cdata"].split(',')[0].split(" &gt; ").join(' '),
-                    recruitStartDate: dateO.toString(),
-                    recruitExpireDate: dateE.toString(),
+                    recruitStartDate: parsedDateO,
+                    recruitExpireDate: parsedDateE,
                     recruitTitle: recruitPosition["title"]["_cdata"],
                     recruitSalary: data['salary']['_text'],
                     recruitExperienceLevel: recruitPosition['experience-level']['_text'],
                     recruitRequiredExperienceLevel: recruitPosition['required-education-level']['_text'],
-                    recruitURL: data['url']['_text']
+                    recruitURL: data['url']['_text'],
+                    recruitLocationCode : recruitPosition['location']['_attributes']['code'],
+                    recruitJobCategoryCode : recruitPosition['job-category']['_attributes']['code'],
+                    recruitJobTypeCode : recruitPosition['job-type']['_attributes']['code']
                 }
 
-                if (bth <= 48) {
+                if ( bth <= 24 ) {
                     jobDataArr.push(jobData);
                     companyDataArr.push(companyData);
                 }
             })
+            
+    res.send(recruitData);
         })
 
     /* 
@@ -118,14 +144,13 @@ router.get('/', async (req, res, next) => {
     */
     await Promise.all(jobDataArr.map(async data => {
         const arrayJobData = Object.keys(data).concat(Object.values(data));
-        let recruitInsertQuery = `INSERT INTO recruit (?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!) VALUES ('?!', '?!', '?!', '?!', '?!','?!', '?!', '?!', '?!', '?!', '?!')`
+        let recruitInsertQuery = `INSERT INTO recruit (?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!, ?!) VALUES ('?!', '?!', '?!', '?!', '?!', '?!', '?!', '?!','?!', '?!', '?!', '?!', '?!', '?!')`
         arrayJobData.map(jsonData => {
             recruitInsertQuery = recruitInsertQuery.replace('?!', jsonData);
         });
         const recruitResultQuery = await db.queryParam_None(recruitInsertQuery);
         // console.log(recruitResultQuery);
     }))
-    res.send(jobDataArr);
     res.end();
 });
 
