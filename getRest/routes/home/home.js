@@ -25,7 +25,7 @@ router.get('/portfolio', async (req, res) => {
     }
     else if (returnedData != -1) {
         const homeDate = req.body.date;
-        const dateArr = homeDate.split('.');
+        const dateArr = homeDate.split('/');
         let nowQuarter = dateArr[1]; //현재 날짜 분기
 
         const homeQuery = `SELECT * FROM portfolio WHERE userIdx = ${returnedData.userIdx}`;

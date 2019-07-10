@@ -33,15 +33,13 @@ router.get('/', async (req, res, next) => {
                 const recruitPosition = data['position'];
                 //공고 시작일
                 const dateO = new Date(data['opening-timestamp']["_text"] * 1000);
-                dateO.setHours(dateO.getHours());
                 //공고 만료일
                 const dateE = new Date(data['expiration-timestamp']["_text"] * 1000);
-                dateE.setHours(dateE.getHours());
                 //공고 게시일
                 const dateP = new Date(data['posting-timestamp']["_text"] * 1000);
                 //현재 시간
                 let dateNow = new Date();
-                const btns = dateNow.getTime() - dateP.getTime();
+                const btn = Number((dateNow.getTime() - dateP.getTime()) / (1000 * 60 * 60));
 
                 const shortMonth = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
                 //시간 파싱
@@ -60,9 +58,6 @@ router.get('/', async (req, res, next) => {
 
                 const parsedDateO = splitDateO[3] + '/' + numMonthO + '/' + splitDateO[2] + ' ' + splitDateO[4];
                 const parsedDateE = splitDateE[3] + '/' + numMonthE + '/' + splitDateE[2] + ' ' + splitDateE[4];
-
-                //현재시간과 공고 시간의 차이
-                const bth = btns / (1000 * 60 * 60);
 
                 /*
                     회사 정보 api 가져오기
@@ -97,13 +92,12 @@ router.get('/', async (req, res, next) => {
                     recruitJobTypeCode : recruitPosition['job-type']['_attributes']['code']
                 }
 
-                if ( bth <= 24 ) {
+                //매일 6시간 마다 (더 커지면 axios 과부하 걸림)
+                if ( btn <= 6 ) {
                     jobDataArr.push(jobData);
                     companyDataArr.push(companyData);
                 }
             })
-            
-    res.send(recruitData);
         })
 
     /* 
@@ -111,6 +105,7 @@ router.get('/', async (req, res, next) => {
         parameter는 companyJson파일
         해당 company DB의 Idx는 jobData Json에 Insert
     */
+   
     await Promise.all(companyDataArr.map(async (data, i) => {
         if (data.companyUrl) {
             await axios.get(data.companyUrl)
@@ -133,7 +128,6 @@ router.get('/', async (req, res, next) => {
         await Promise.all(arrayCompanyData.map(jsonData => {
             companyInsertQuery = companyInsertQuery.replace('?!', jsonData);
         }));
-        console.log(companyInsertQuery);
         const companyResultQuery = await db.queryParam_None(companyInsertQuery);
         // console.log(companyResultQuery);
         jobDataArr[i]['companyIdx'] = await companyResultQuery['insertId'];
@@ -151,6 +145,8 @@ router.get('/', async (req, res, next) => {
         const recruitResultQuery = await db.queryParam_None(recruitInsertQuery);
         // console.log(recruitResultQuery);
     }))
+    console.log(companyDataArr);
+    res.send(jobDataArr);
     res.end();
 });
 
