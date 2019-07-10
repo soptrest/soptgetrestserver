@@ -6,37 +6,24 @@ Title: Server architecture from AWS RDS database using MYSQL platform for GetRes
 var express = require('express');
 var router = express.Router();
 var moment = require('moment');
+var math = require('math');
 const utils = require('../../utils/utils');
 const statusCode = require('../../utils/statusCode');
 const responseMessage = require('../../utils/responseMessage');
 const db = require('../../module/pool');
 const upload = require('../../config/multer');
-const tokenVerify = require('../../utils/tokenVerify');
 
-/*1. 나의 자소서 작성
-/**1. 나의 자소서 작성
-    METHOD : POST
-    url : /resume/
-    authorization : token
-    입력 : recruitIdx, questionNum, questionContent
-    출력 : resumeIdx
-    */
+/*1. 나의 자소서 작성*/
 router.post('/', async (req, res) => {
-    const returnedData=await tokenVerify.isLoggedin(req.headers.authorization,res);
-    if(returnedData!=-1){
-    if ( !req.body.recruitIdx || !req.body.questionNum || !req.body.questionContent) {
+    if (!req.body.userIdx || !req.body.recruitIdx || !req.body.questionNum || !req.body.questionContent) {
         res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.NULL_VALUE));
     } else {
         const resumeInfo = {
-            userIdx: returnedData.userIdx,
+            userIdx: req.body.userIdx,
             recruitIdx: req.body.recruitIdx,
             questionNum: req.body.questionNum,
             questionContent: req.body.questionContent,
             questionIdx: null
-        }
-
-        const resumeContentSend={
-            resumeIdx: null
         }
         //questionIdx SELECT
         //recruitIdx와 questionNum 기반으로 questionIdx 가져옴 
@@ -56,8 +43,7 @@ router.post('/', async (req, res) => {
             const resumeIdxSelectResult = await connection.query(resumeIdxSelectQuery, resumeInfo.recruitIdx);
             console.log(resumeIdxSelectResult[0].resumeIdx); //삽입된 resume의 resumeIdx를 가져옴
 
-            const resumeIdxSelectIdxr = resumeIdxSelectResult[0].resumeIdx;
-            resumeContentSend.resumeIdx=resumeIdxSelectIdxr;
+            const resumeIdxSelectIdxr = resumeIdxSelectResult[0].resumeIdx
 
             //2) 두번째 transaction -> resumeContent Insert
             const resumeContentInsertResult = await connection.query(resumeContentInsertQuery, [resumeIdxSelectIdxr, resumeInfo.userIdx, resumeInfo.questionIdx, resumeInfo.questionContent]);
@@ -70,31 +56,25 @@ router.post('/', async (req, res) => {
         });
 
         if (!resumeTransaction) {
-            res.status(500).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.RESUME_SAVE_FAIL));
+            res.status(401).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.RESUME_SAVE_FAIL));
         } else {
-            console.log(resumeContentSend);
-            res.status(200).send(utils.successTrue(statusCode.OK, responseMessage.RESUME_SAVE_SUCCESS,resumeContentSend));
+            res.status(200).send(utils.successTrue(statusCode.OK, responseMessage.RESUME_SAVE_SUCCESS));
         }
 
-    }
+
 
 
 
     }
 });
 
-
-/*2. 나의 자소서 전체 조회
-    METHOD : GET
-    url : /resume/resume
-    authorization : token
-    입력 : X
-    출력 : recruitIdx, companyIdx, recruitJobType, recruitStartDate, recruitExpireDate, leftDate, companyName, expireCheck*/
-
-    router.get('/', async (req, res) => {
+/*2. 나의 자소서 전체 조회*/
+router.get('/:userIdx', async (req, res) => {
     //1) leftdate, 2) companyName, 3) recruitJobType, 4) expirecheck, 5) recruitIdx 리턴해주자~
-    const returnedData=await tokenVerify.isLoggedin(req.headers.authorization,res);
-    if(returnedData!=-1){
+
+    if (!req.params.userIdx) {
+        res.status(400).send(res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.NULL_VALUE)));
+    } else {
         const myresumeInfo = {
             leftDate: null,
             companyName: null,
@@ -104,14 +84,17 @@ router.post('/', async (req, res) => {
         }
         //recruit와 resume JOIN 해서 recruitIdx, companyIdx 가져옴
         const myresumeSelectQuery = 'SELECT resume.recruitIdx, companyIdx, recruitJobType, recruitStartDate, recruitExpireDate FROM resume JOIN recruit ON resume.recruitIdx=recruit.recruitIdx WHERE resume.userIdx=?';
-        const myresumeSelectResult = await db.queryParam_Parse(myresumeSelectQuery, returnedData.userIdx);
+        const myresumeSelectResult = await db.queryParam_Parse(myresumeSelectQuery, req.params.userIdx);
         if (!myresumeSelectResult) {
             res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.RESUME_WHOLE_SELECT_FAIL));
         } else {
             var myresumeInfosend = Array();
 
             for (var i = 0; i < myresumeSelectResult.length; i++) {
+
+
                 const companyIdx = myresumeSelectResult[i].companyIdx;
+                console.log('companyIdxxxxxxx');
                 console.log(companyIdx);
                 myresumeInfo.recruitIdx = myresumeSelectResult[i].recruitIdx; //5)
                 const recruitStartDate = myresumeSelectResult[i].recruitStartDate;
@@ -153,76 +136,50 @@ router.post('/', async (req, res) => {
 
         }
     }
-
 });
 
-/**3. 나의 자소서 상세 조회
- * METHOD : GET
-    url : /resume/resume/{resumeIdx}/{questionNum}
-    authorization : token
-    입력 : X
-    출력 : questionTitle, questionIdx, recruitJobType, resumeContent
-*/
-router.get('/:resumeIdx/:questionNum',async(req,res)=>{
-    //1) questionTitle, 3) recruitJobType, 4) resumeContent 리턴해주자~
-    const returnedData=await tokenVerify.isLoggedin(req.headers.authorization,res);
-    if(returnedData!=-1){
-    if(!req.params.resumeIdx){
-        res.status(400).send(res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.NULL_VALUE)));      
-    }
-    else{
-        //1) questionTitle, questionIdx select ->resumeIdx로 recruitIdx 먼저 찾아와서 recruitIdx로 questionTitle, idx조회
-        const recruitIdxSelectQuery='SELECT recruitIdx FROM resume WHERE resumeIdx=? AND userIdx=?';
-        const recruitIdxSelectResult=await db.queryParam_Parse(recruitIdxSelectQuery, [req.params.resumeIdx, returnedData.userIdx]);
+// /**4. 나의 자소서 상세 조회*/
+// router.get('/:userIdx/:resumeIdx/:questionNum',async(req,res)=>{
+//     //1) questionTitle, 3) recruitJobType, 4) resumeContent 리턴해주자~
 
-        const recruitIdx=recruitIdxSelectResult[0].recruitIdx;
-        
-        const questionSelectQuery='SELECT questionIdx,questionTitle from question WHERE recruitIdx=? AND questionNum=?';
-        const questionSelectResult=await db.queryParam_Arr(questionSelectQuery,[recruitIdx,req.params.questionNum]); 
+//     if(!req.params.userIdx || !req.params.resumeIdx){
+//         res.status(400).send(res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.NULL_VALUE)));      
+//     }
+//     else{
+//         const questionSelectQuery='SELECT questionIdx,questionTitle from resumeContent WHERE resumeIdx=? AND userIdx=? AND questionNum=?';
+//         const questionSelectResult=await db.queryParam_Arr(questionSelectQuery,[req.params.resumeIdx,req.params.userIdx,req.params.questionNum]);
 
-        if(!questionSelectResult){
-            res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.RESUME_DETAIL_SELECT_FAIL));
-        }
-        else{
-            //보낼 data packet
-            const resumeDetailSend={
-                questionTitle:null,
-                questionIdx:null,
-                recruitJobType:null,
-                resumeContent:null
-            }
-            //questionTitle 찾기
-            const questionIdx=questionSelectResult[0].questionIdx;
-            const questionTitle=questionSelectResult[0].questionTitle; // 1) questionTitle
-            resumeDetailSend.questionIdx=questionIdx;
-            resumeDetailSend.questionTitle=questionTitle;
+//         if(!questionSelectResult){
+//             res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.RESUME_DETAIL_SELECT_FAIL));
+//         }
+//         else{
+//             //questionTtitle 찾기
+//             const questionIdx=questionSelectResult[0].questionIdx;
+//             const recruitIdxSelectQuery='SELECT questionTitle FROM question WHERE resumeIdx=? AND userIdx=?';
+//             const recruitIdxSelectResult=await db.queryParam_Arr(recruitIdxSelectQuery,[resumeIdx,req.params.userIdx]);
+//             const recruitIdx=recruitIdxSelectResult[0].recruitIdx;
+//             console.log('recruitIdx: ');
+//             console.log(recruitIdx);
 
-            //recruitJobType 찾기
-            const recruitJobTypeSelectQuery='SELECT recruitJobType FROM recruit WHERE recruitIdx=?';
-            const recruitJobTypeSelectResult=await db.queryParam_Parse(recruitJobTypeSelectQuery,recruitIdx);
-            
-            resumeDetailSend.recruitJobType=recruitJobTypeSelectResult[0].recruitJobType; //2) recruitJobType
-            
-            //3) questionContent 찾기 (resumeContent)
-            const questionContentSelectQuery='SELECT questionContent FROM resumeContent WHERE resumeIdx=? AND questionIdx=?';
-            const questionContentSelectResult=await db.queryParam_Arr(questionContentSelectQuery,[req.params.resumeIdx, questionIdx]);
-            resumeDetailSend.resumeContent=questionContentSelectResult[0].questionContent;
+//             //recruitJobType 찾기
+//             const recruitJobTypeSelectQuery='SELECT recruitJobType FROM recruit WHERE recruitIdx=?';
+//             const recruitJobTypeSelectResult=await db.queryParam_Parse(recruitJobTypeSelectQuery,recruitIdx);
+//             //console.log(recruitJobTypeSelectResult[0].recruitJobType);
+//             questionSelectResult.recruitJobType=recruitJobTypeSelectResult[0].recruitJobType;
+//             myresumeSelectResult[i].expireCheck=myresumeInfo.expireCheck;
 
-            res.status(200).send(utils.successTrue(statusCode.OK,responseMessage.RESUME_DETAIL_SELECT_SUCCESS, resumeDetailSend));
-        }
-    }
-}
-});
-/*4. 나의 자소서 수정*/
-router.put('/:resumeIdx/:recruitIdx/:questionNum', async (req, res) => {
+//             res.status(200).send(utils.successTrue(statusCode.OK,responseMessage.RESUME_DETAIL_SELECT_SUCCESS, questionSelectResult));
+//         }
+//     }
+// });
+/*3. m나의 자소서 수정*/
+router.put('/:userIdx/:resumeIdx/:recruitIdx/:questionNum', async (req, res) => {
     //null 처리
-    const returnedData=await tokenVerify.isLoggedin(req.headers.authorization,res);
-    if(returnedData!=-1){
-    if (!req.params.resumeIdx || !req.params.questionNum || !req.body.questionContent || !req.params.recruitIdx) {
+    if (!req.params.userIdx || !req.params.resumeIdx || !req.params.questionNum || !req.body.questionContent || !req.params.recruitIdx) {
         res.status(400).send(res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.NULL_VALUE)));
     } else {
         const resumeInfo = {
-            userIdx: returnedData.userIdx,
+            userIdx: req.params.userIdx,
             resumeIdx: req.params.resumeIdx,
             recruitIdx: req.params.recruitIdx,
             questionNum: req.params.questionNum,
@@ -231,7 +188,7 @@ router.put('/:resumeIdx/:recruitIdx/:questionNum', async (req, res) => {
         }
 
         //questionIdx SELECT
-        //recruitIdx와 questionNum 기반으로 questionIdx 가져옴 
+        //rec ruitIdx와 questionNum 기반으로 questionIdx 가져옴 
         const questionIdxSelectQuery = 'SELECT questionIdx FROM question WHERE recruitIdx = ? AND questionNum = ?';
         const questionIdxSelectResult = await db.queryParam_Parse(questionIdxSelectQuery, [resumeInfo.recruitIdx, resumeInfo.questionNum]);
         resumeInfo.questionIdx = questionIdxSelectResult[0].questionIdx;
@@ -262,15 +219,12 @@ router.put('/:resumeIdx/:recruitIdx/:questionNum', async (req, res) => {
 
 
     }
-}
 });
 
-/*5. 나의 자소서 삭제*/
-router.delete('/:resumeIdx', async (req, res) => {
-    const returnedData=await tokenVerify.isLoggedin(req.headers.authorization,res);
-    if(returnedData!=-1){
-        //null 처리
-    if (!req.params.resumeIdx) {
+/*3. 나의 자소서 삭제*/
+router.delete('/:userIdx/:resumeIdx', async (req, res) => {
+    //null 처리
+    if (!req.params.userIdx || !req.params.resumeIdx) {
         res.status(400).send(res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.NULL_VALUE)));
     } else {
 
@@ -300,7 +254,7 @@ router.delete('/:resumeIdx', async (req, res) => {
             res.status(200).send(utils.successTrue(statusCode.OK, responseMessage.RESUME_DELETE_SUCCESS));
         }
 
-    }
+
     }
 });
 

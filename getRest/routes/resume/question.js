@@ -13,21 +13,26 @@ const statusCode = require('../../utils/statusCode');
 const responseMessage = require('../../utils/responseMessage');
 const db = require('../../module/pool');
 const upload = require('../../config/multer');
+const tokenVerify = require('../../utils/tokenVerify');
 
-/* GET home page. */
+/**1. 나의 자소서 문항 불러오기
+    METHOD : GET
+    url : /resume/question/{recruitIdx}
+    authorization : token
+    입력 : X
+    출력 : questionNum, questionTitle
+    */
 router.get('/:recruitIdx', async (req, res) => {
-    const userIdx = req.params.userIdx;
+    const returnedData=await tokenVerify.isLoggedin(req.headers.authorization,res);
+    if(returnedData!=-1){
+    const userIdx = returnedData.userIdx;
     const recruitIdx = req.params.recruitIdx;
 
-    /*Params NULL check*/
-    if (!req.params.recruitIdx) {
-        res.status(200).send(res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.NULL_VALUE)));
-    } else {
-        console.log('recruitIdx----------------');
-        console.log(req.params.recruitIdx);
-        var questionArray = new Array();
 
-        //dbInsert
+    if (!req.params.recruitIdx) {
+        res.status(500).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.NULL_VALUE));
+    } else {
+        
         try {
             const questionSelectQuery = 'SELECT questionNum,questionTitle FROM question WHERE recruitIdx=?';
             const questionSelectResult = await db.queryParam_Parse(questionSelectQuery, req.params.recruitIdx);
@@ -43,6 +48,7 @@ router.get('/:recruitIdx', async (req, res) => {
 
 
     }
+}
 });
 
 

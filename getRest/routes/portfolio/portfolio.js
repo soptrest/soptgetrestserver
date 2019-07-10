@@ -12,16 +12,23 @@ const statusCode = require('../../utils/statusCode');
 const responseMessage = require('../../utils/responseMessage');
 const db = require('../../module/pool');
 const upload = require('../../config/multer');
+const tokenVerify = require('../../utils/tokenVerify');
 
-router.get('/',async(req,res)=>{
-    res.render('index', { title: 'portfolio' });
-});
 
-    /**1. 포트폴리오 작성 */
+    /**1. 포트폴리오 작성
+    METHOD : POST
+    url : /portfolio/portfolio
+    authorization : token
+    입력 : portfolioTitle, portfolioBody, portfolioCategory, portfolioTag, portfolioStartDate, portfolioExpireDate
+    출력 : portfolioIdx
+    */
 router.post('/',upload.fields([{name:'portfolioImg'}]),async(req,res)=>{
-    if(!req.body.portfolioTitle || !req.body.portfolioBody||!req.body.portfolioCategory ||!req.body.portfolioTag){
+    const returnedData=await tokenVerify.isLoggedin(req.headers.authorization,res);
+    if(returnedData!=-1){
+
+        if(!req.body.portfolioTitle || !req.body.portfolioBody||!req.body.portfolioCategory ||!req.body.portfolioTag){
         res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST,responseMessage.NULL_VALUE));
-    }
+        }
     else{
         //portfolio information parsing
         const portfolioInfo={
@@ -30,7 +37,7 @@ router.post('/',upload.fields([{name:'portfolioImg'}]),async(req,res)=>{
             portfolioExpireDate:req.body.portfolioExpireDate,
             portfolioBody:req.body.portfolioBody,
             portfolioCategory:req.body.portfolioCategory,
-            userIdx:req.body.userIdx,
+            userIdx:returnedData.userIdx,
             portfolioImg:null,
             portfolioTag:req.body.portfolioTag
         }
@@ -51,12 +58,16 @@ router.post('/',upload.fields([{name:'portfolioImg'}]),async(req,res)=>{
         //db insert
             try{
                 const portfolioInsertQuery='INSERT INTO portfolio(portfolioTitle,portfolioBody,portfolioStartDate,portfolioExpireDate,userIdx,portfolioImg,portfolioCategory,portfolioTag) VALUES(?,?,?,?,?,?,?,?)';
-                const portfolioInsertResult = await db.queryParam_Arr(portfolioInsertQuery, [portfolioInfo.portfolioTitle,portfolioInfo.portfolioBody,portfolioInfo.portfolioStartDate,portfolioInfo.portfolioExpireDate,req.body.userIdx,portfolioInfo.portfolioImg,portfolioInfo.portfolioCategory,portfolioInfo.portfolioTag]);
+                const portfolioInsertResult = await db.queryParam_Arr(portfolioInsertQuery, [portfolioInfo.portfolioTitle,portfolioInfo.portfolioBody,portfolioInfo.portfolioStartDate,portfolioInfo.portfolioExpireDate,portfolioInfo.userIdx,portfolioInfo.portfolioImg,portfolioInfo.portfolioCategory,portfolioInfo.portfolioTag]);
                         if(!portfolioInsertResult){
                             res.status(200).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_SAVE_FAIL));
                                         
                         }else{
-                            res.status(200).send(utils.successTrue(statusCode.OK,responseMessage.PORTFOLIO_SAVE_SUCCESS));
+                            const portfolioSendInfo={
+                                portfolioIdx:null
+                            }
+                            portfolioSendInfo.portfolioIdx=portfolioInsertResult.insertId;
+                            res.status(200).send(utils.successTrue(statusCode.OK,responseMessage.PORTFOLIO_SAVE_SUCCESS,portfolioSendInfo));
                         }
                         
             }catch(e){
@@ -65,14 +76,22 @@ router.post('/',upload.fields([{name:'portfolioImg'}]),async(req,res)=>{
 
         
     }
+}
     });
 
-    /*2. 포트폴리오 전체 조회*/
-    router.get('/:userIdx',async(req,res)=>{
-        //console.log(req.params.userIdx);
+    /*2. 포트폴리오 전체 조회
+    METHOD : GET
+    url : /portfolio/portfolio
+    authorization : token
+    입력 : X
+    출력 : portfolioIdx,portfolioTitle,portfolioStartDate, portfolioExpireDate, portfolioCategory, portfolioImg, portfolioTag
+    */
+    router.get('/',async(req,res)=>{
+        const returnedData=await tokenVerify.isLoggedin(req.headers.authorization,res);
+        if(returnedData!=-1){
 
-        var userIdx=req.params.userIdx;
-        const portfolioSelectQuery='SELECT portfolioIdx,portfolioTitle,portfolioStartDate,portfolioExpireDate,portfolioCategory,portfolioImg FROM portfolio';
+        var userIdx=returnedData.userIdx;
+        const portfolioSelectQuery='SELECT portfolioIdx,portfolioTitle,portfolioStartDate,portfolioExpireDate,portfolioCategory,portfolioImg,portfolioTag FROM portfolio WHERE userIdx=?';
         const portfolioSelectResult=await db.queryParam_Parse(portfolioSelectQuery,userIdx);
 
         if(!portfolioSelectResult){
@@ -82,35 +101,49 @@ router.post('/',upload.fields([{name:'portfolioImg'}]),async(req,res)=>{
             const portfolioSelectInfo=portfolioSelectResult;
             res.status(200).send(utils.successTrue(statusCode.OK,responseMessage.PORTFOLIO_READ_SUCCESS,portfolioSelectInfo));
         }
+    }
     });
 
-    /**3. 포트폴리오 상세 조회 */
-    router.get('/:userIdx/:portfolioIdx',async(req,res)=>{
-       // console.log(req.params.userIdx);
-       // console.log(req.params.portfolioIdx);
-        var userIdx=req.params.userIdx;
+    /**3. 포트폴리오 상세 조회
+    METHOD : GET
+    url : /portfolio/portfolio/{portfolioIdx}
+    authorization : token
+    입력 : X
+    출력 : portfolioTitle,portfolioStartDate, portfolioExpireDate, portfolioCategory, portfolioImg, portfolioTag, portfolioBody
+     */
+    router.get('/:portfolioIdx',async(req,res)=>{
+    const returnedData=await tokenVerify.isLoggedin(req.headers.authorization,res);
+    if(returnedData!=-1){
+        var userIdx=returnedData.userIdx;
         var portfolioIdx=req.params.portfolioIdx;
         
-        //if token 하고 userIdx 하고 일치 시
-
+        
         //db Query
         const portfolioDetailSelectQuery='SELECT portfolioTitle,portfolioStartDate,portfolioExpireDate,portfolioBody,portfolioTag FROM portfolio WHERE portfolioIdx=?';
         const portfolioDetailSelectResult=await db.queryParam_Parse(portfolioDetailSelectQuery,portfolioIdx);
 
         if(!portfolioDetailSelectResult){
-            res.status(200).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_DETAIL_READ_FAIL));
+            res.status(500).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_DETAIL_READ_FAIL));
         }   
         else{
             res.status(200).send(utils.successTrue(statusCode.OK,responseMessage.PORTFOLIO_DETAIL_READ_SUCCESS,portfolioDetailSelectResult));
         }
-
+    }
     });
 
-     /**4. 포트폴리오 삭제 */
+     /**4. 포트폴리오 삭제 
+      * METHOD : DELETE
+    url : /portfolio/portfolio/{portfolioIdx}
+    authorization : token
+    입력 : X
+    출력 : ResponseMessage
+     */
     router.delete('/:portfolioIdx',async(req,res)=>{
-        //***************************/user token 확인_추가해야함
+        const returnedData=await tokenVerify.isLoggedin(req.headers.authorization,res);
+        if(returnedData!=-1){
+
         if(!req.params.portfolioIdx){
-            res.status(200).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_DELETE_FAIL_PARAMS));
+            res.status(500).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_DELETE_FAIL_PARAMS));
         }
         else{
             const portfolioIdx=req.params.portfolioIdx;
@@ -127,7 +160,7 @@ router.post('/',upload.fields([{name:'portfolioImg'}]),async(req,res)=>{
                 const portfolioDeleteResult=await db.queryParam_Parse(portfolioDeleteQuery,portfolioIdx);
                 
                 if(!portfolioDeleteResult){
-                    res.status(200).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_DELETE_FAIL));
+                    res.status(500).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_DELETE_FAIL));
                 }
                 else{
                     res.status(200).send(utils.successTrue(statusCode.OK,responseMessage.PORTFOLIO_DELETE_SUCCESS)); 
@@ -135,12 +168,19 @@ router.post('/',upload.fields([{name:'portfolioImg'}]),async(req,res)=>{
             }
             
         }
-        
+    }
+    
     });
-    /**5. 포트폴리오 수정 */
+    /**5. 포트폴리오 수정 
+    METHOD : PUT
+    url : /portfolio/portfolio/{portfolioIdx}
+    authorization : token
+    입력 : portfolioTitle,portfolioStartDate, portfolioExpireDate, portfolioCategory, portfolioImg, portfolioTag, portfolioBody
+    출력 : ResponseMessage
+     */
     router.put('/:portfolioIdx',upload.fields([{name:'portfolioImg'}]),async(req,res)=>{
-        //***************************/user token 확인_추가해야함
-
+        const returnedData=await tokenVerify.isLoggedin(req.headers.authorization,res);
+        if(returnedData!=-1){
         if(!req.params.portfolioIdx){ //수정할 portfolioIdx 미입력시
             res.status(200).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_DELETE_FAIL_PARAMS));
         }
@@ -154,7 +194,7 @@ router.post('/',upload.fields([{name:'portfolioImg'}]),async(req,res)=>{
             }
             else{  //db에 일치하는 portfolioIdx가 있으면
                 if(!req.body.portfolioTitle || !req.body.portfolioStartDate || !req.body.portfolioExpireDate || !req.body.portfolioCategory){
-                    res.status(200).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_DELETE_FAIL_PARAMS));  
+                    res.status(500).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_DELETE_FAIL_PARAMS));  
                 }
                 const portfolioInfo={
                     portfolioTitle:req.body.portfolioTitle, //0
@@ -162,7 +202,7 @@ router.post('/',upload.fields([{name:'portfolioImg'}]),async(req,res)=>{
                     portfolioExpireDate:req.body.portfolioExpireDate, //2
                     portfolioBody:req.body.portfolioBody, //3
                     portfolioCategory:req.body.portfolioCategory, //4
-                    userIdx:req.body.userIdx, //5
+                    userIdx:returnedData.userIdx, //5
                     portfolioImg:null, //6
                     portfolioTag:req.body.portfolioTag //7
                 }
@@ -174,13 +214,14 @@ router.post('/',upload.fields([{name:'portfolioImg'}]),async(req,res)=>{
                 const portfolioUpdateResult=await db.queryParam_Parse(portfolioUpdateQuery,[portfolioInfo.portfolioTitle,portfolioInfo.portfolioStartDate,portfolioInfo.portfolioExpireDate,portfolioInfo.portfolioBody,portfolioInfo.portfolioCategory,portfolioInfo.userIdx,portfolioInfo.portfolioImg,portfolioInfo.portfolioTag,portfolioIdx]);
                 
                 if(!portfolioUpdateResult){
-                    res.status(200).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_UPDATE_FAIL));
+                    res.status(500).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.PORTFOLIO_UPDATE_FAIL));
                 }
                 else{
                     res.status(200).send(utils.successTrue(statusCode.OK,responseMessage.PORTFOLIO_UPDATE_SUCCESS)); 
                 }
             }
         }
+    }
     });
 
     module.exports = router;
