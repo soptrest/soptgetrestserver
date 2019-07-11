@@ -49,10 +49,10 @@ router.get('/', async (req, res, next) => {
                 let numMonthO, numMonthE;
                 await Promise.all(shortMonth.map((data, iter) => {
                     if(data == splitDateO[1]){
-                        numMonthO = pad(iter,2);
+                        numMonthO = pad(iter + 1,2);
                     }
                     if(data == splitDateE[1]){
-                        numMonthE = pad(iter,2);
+                        numMonthE = pad(iter + 1,2);
                     }
                 }))
 
