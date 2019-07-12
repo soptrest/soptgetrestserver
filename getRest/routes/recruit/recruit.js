@@ -161,10 +161,12 @@ router.get('/detail/:recruitIdx', async (req, res) => {
     출력 : recruitIdx, companyName, companyImage, recruitJobCategory, recruitExpireDate
 */
 
-router.post('/', async (req, res) => {
+router.get('/', async (req, res) => {
     const returnedData = await tokenVerify.isLoggedin(req.headers.authorization, res);
     console.log(req.body);
-    if (returnedData != -1) {
+    if (!req.body.date) {
+        res.status(400).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NULL_VALUE));
+    } else if (returnedData != -1) {
         const searchDate = req.body.date;
         //req date 형식(YYYY.MM.DD)
 
