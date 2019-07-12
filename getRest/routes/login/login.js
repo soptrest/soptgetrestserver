@@ -30,7 +30,7 @@ router.post('/', async (req, res) => {
         
         
         // DB내에서 같은 Id가 없을 경우
-        if(!selectUserResult) {
+        if(!selectUserResult[0]) {
             res.status(404).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NO_USER));
         } else{
             const hashedPw = await encryption.onlyEncrytion(userPassword, selectUserResult[0].userSalt);
