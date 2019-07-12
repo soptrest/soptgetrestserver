@@ -38,7 +38,9 @@ router.post('/', async (req, res) => {
         const resumeContentSend={
             resumeIdx: null
         }
-        //questionIdx SELECT
+        
+        if(req.body.questionNum==1){ //1번이면 -> resume/ resumeContent 둘다 삽입
+
         //recruitIdx와 questionNum 기반으로 questionIdx 가져옴 
         const resumeInsertQuery = 'INSERT INTO resume(recruitIdx,userIdx) VALUES(?,?)';
         const questionIdxSelectQuery = 'SELECT questionIdx FROM question WHERE recruitIdx = ? AND questionNum = ?';
@@ -62,19 +64,51 @@ router.post('/', async (req, res) => {
             //2) 두번째 transaction -> resumeContent Insert
             const resumeContentInsertResult = await connection.query(resumeContentInsertQuery, [resumeIdxSelectIdxr, resumeInfo.userIdx, resumeInfo.questionIdx, resumeInfo.questionContent]);
             if (!resumeContentInsertResult) {
-                console.log('resume Content Insert Result Failed');
+                res.status(500).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.RESUME_SAVE_FAIL));
+            } else {
+                res.status(200).send(utils.successTrue(statusCode.OK, responseMessage.RESUME_SAVE_SUCCESS,resumeContentSend));
+        }
+
+        });
+        }
+        else{ //2번 혹은 3번이면
+            const resumeTransaction = await db.Transaction(async (connection) => {
+
+            //questionIdx 가져옴
+            const questionIdxSelectQuery = 'SELECT questionIdx FROM question WHERE recruitIdx = ? AND questionNum = ?';
+            const questionIdxSelectResult = await db.queryParam_Parse(questionIdxSelectQuery, [resumeInfo.recruitIdx, resumeInfo.questionNum]);
+            
+            resumeInfo.questionIdx = questionIdxSelectResult[0].questionIdx;
+            const resumeContentInsertQuery = 'INSERT INTO resumeContent(resumeIdx,userIdx,questionIdx,questionContent) VALUES(?,?,?,?)';
+    
+            const resumeIdxSelectQuery = 'SELECT * from resume WHERE recruitIdx=?';
+            const resumeIdxSelectResult = await connection.query(resumeIdxSelectQuery, resumeInfo.recruitIdx);
+            console.log(resumeIdxSelectResult[0].resumeIdx); //삽입된 resume의 resumeIdx를 가져옴
+ 
+            const resumeIdxSelectIdxr = resumeIdxSelectResult[0].resumeIdx;
+            resumeContentSend.resumeIdx=resumeIdxSelectIdxr;
+ 
+             //2) 두번째 transaction -> resumeContent Insert
+            const resumeContentInsertResult = await connection.query(resumeContentInsertQuery, [resumeIdxSelectIdxr, resumeInfo.userIdx, resumeInfo.questionIdx, resumeInfo.questionContent]);
+            
+            if (!resumeContentInsertResult) {
+            console.log('resume Content Insert Result Failed');
             } else {
                 console.log('resume Content Insert Result Success');
             }
+            });
 
-        });
-
-        if (!resumeTransaction) {
-            res.status(500).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.RESUME_SAVE_FAIL));
-        } else {
-            console.log(resumeContentSend);
-            res.status(200).send(utils.successTrue(statusCode.OK, responseMessage.RESUME_SAVE_SUCCESS,resumeContentSend));
+            if (!resumeTransaction) {
+                res.status(500).send(utils.successFalse(statusCode.INTERNAL_SERVER_ERROR, responseMessage.RESUME_SAVE_FAIL));
+            } else {
+                console.log(resumeContentSend);
+                res.status(200).send(utils.successTrue(statusCode.OK, responseMessage.RESUME_SAVE_SUCCESS,resumeContentSend));
+            }
         }
+    
+        
+
+       
 
     }
 
@@ -103,7 +137,7 @@ router.post('/', async (req, res) => {
             recruitIdx: null
         }
         //recruit와 resume JOIN 해서 recruitIdx, companyIdx 가져옴
-        const myresumeSelectQuery = 'SELECT resume.recruitIdx, companyIdx, recruitJobType, recruitStartDate, recruitExpireDate FROM resume JOIN recruit ON resume.recruitIdx=recruit.recruitIdx WHERE resume.userIdx=?';
+        const myresumeSelectQuery = 'SELECT resumeIdx, resume.recruitIdx, companyIdx, recruitJobType, recruitStartDate, recruitExpireDate FROM resume JOIN recruit ON resume.recruitIdx=recruit.recruitIdx WHERE resume.userIdx=? ORDER BY recruitExpireDate';
         const myresumeSelectResult = await db.queryParam_Parse(myresumeSelectQuery, returnedData.userIdx);
         if (!myresumeSelectResult) {
             res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.RESUME_WHOLE_SELECT_FAIL));
@@ -122,33 +156,58 @@ router.post('/', async (req, res) => {
                 const companyNameSelectResult = await db.queryParam_Parse(companyNameSelectQuery, companyIdx);
                 myresumeInfo.companyName = companyNameSelectResult[0].companyName; //2) 
 
-
+                var recruitExpireDateDay = moment(recruitExpireDate, "YYYY-MM-DD");
+                var todayDay=moment().format("YYYY-MM-DD");
+                
+                var diff=moment(recruitExpireDateDay).diff(moment(todayDay),"days");
+                
                 //1) leftDate, 4) expireCheck
-                var dayDiff = moment(recruitExpireDate, "YYYY.MM.DD").fromNow();
-                if (dayDiff.split(' ')[2] == 'hours') { //마감 당일
+                if (diff==0){ //마감 당일
                     myresumeInfo.leftDate = 0;
                     myresumeInfo.expireCheck = true;
                     console.log('마감 당일');
                     console.log(myresumeInfo.leftDate);
-                } else if (dayDiff.split(' ')[2] == 'ago') { //마감종료
-                    myresumeInfo.leftDate = 0;
-                    myresumeInfo.expireCheck = true;
-                    console.log('마감 종료')
-
-                } else {
-                    console.log('남은 일자: ');
-                    myresumeInfo.leftDate = Number(dayDiff.split(' ')[1]); //1) leftDate
-                    myresumeInfo.expireCheck = false;
-                    console.log(myresumeInfo.leftDate);
                 }
+                else if (diff<0){ //마감 종료
+                    myresumeInfo.leftDate = -1;
+                    myresumeInfo.expireCheck = true;
+                    console.log('마감 종료');
+
+                } else{ 
+                    myresumeInfo.leftDate = diff;
+                    myresumeInfo.expireCheck = true;
+                    console.log(myresumeInfo.leftDate)
+                }
+                
 
                 myresumeSelectResult[i].leftDate = myresumeInfo.leftDate;
                 myresumeSelectResult[i].companyName = myresumeInfo.companyName;
                 myresumeSelectResult[i].expireCheck = myresumeInfo.expireCheck;
 
                 myresumeInfosend.push(myresumeSelectResult[i]);
+                myresumeInfosend.sort(function(left,right){
+                    return left.leftDate-right.leftDate
+                });
 
-            }
+                //마감인 것 밑으로 내리기
+                var index;
+                for(i=0;i<myresumeInfosend.length;i++){
+                    if(myresumeInfosend[i].leftDate<0) {
+                        index=i;
+                    }
+                }
+                
+                for(i=0;i<index;i++){
+                    var temp=Array();
+                    temp=myresumeInfosend[i];
+                    myresumeInfosend.shift();
+                    myresumeInfosend.push(temp);
+                }
+                
+                console.log('myresumeInfosend');
+                console.log(myresumeInfosend);
+                
+            }   
             res.status(200).send(utils.successTrue(statusCode.OK, responseMessage.RESUME_WHOLE_SELECT_SUCCESS, myresumeInfosend));
 
         }
