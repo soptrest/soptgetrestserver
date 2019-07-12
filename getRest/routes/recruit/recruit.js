@@ -161,7 +161,7 @@ router.get('/detail/:recruitIdx', async (req, res) => {
     출력 : recruitIdx, companyName, companyImage, recruitJobCategory, recruitExpireDate
 */
 
-router.get('/', async (req, res) => {
+router.post('/', async (req, res) => {
     const returnedData = await tokenVerify.isLoggedin(req.headers.authorization, res);
     console.log(req.body);
     if (!req.body.date) {
