@@ -122,6 +122,7 @@ router.post('/like', async (req, res) => {
 */
 
 router.get('/detail/:recruitIdx', async (req, res) => {
+    console.log(req.params.recruitIdx);
     const returnedData = await tokenVerify.isLoggedin(req.headers.authorization, res);
     if (returnedData != -1) {
         const reqRecruitIdx = req.params.recruitIdx; 
@@ -146,6 +147,7 @@ router.get('/detail/:recruitIdx', async (req, res) => {
             recruitLocation : selectRecruitDetailResult[0].recruitLocation,
             recruitURL : selectRecruitDetailResult[0].recruitURL
         }
+        console.log(res.body);
         res.status(200).send(utils.successTrue(statusCode.OK, resMessage.RECRUIT_DETAIL_SUCCEESS , jobDetailJson))
     }
 })
@@ -159,8 +161,9 @@ router.get('/detail/:recruitIdx', async (req, res) => {
     출력 : recruitIdx, companyName, companyImage, recruitJobCategory, recruitExpireDate
 */
 
-router.get('/', async (req, res) => {
+router.post('/', async (req, res) => {
     const returnedData = await tokenVerify.isLoggedin(req.headers.authorization, res);
+    console.log(req.body);
     if (returnedData != -1) {
         const searchDate = req.body.date;
         //req date 형식(YYYY.MM.DD)

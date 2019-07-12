@@ -126,8 +126,11 @@ router.post('/', async (req, res) => {
     출력 : recruitIdx, companyIdx, recruitJobType, recruitStartDate, recruitExpireDate, leftDate, companyName, expireCheck*/
 
     router.get('/', async (req, res) => {
+        console.log(req);
+        console.log('11111111111111111')
     //1) leftdate, 2) companyName, 3) recruitJobType, 4) expirecheck, 5) recruitIdx 리턴해주자~
     const returnedData=await tokenVerify.isLoggedin(req.headers.authorization,res);
+    console.log('222222222')
     if(returnedData!=-1){
         const myresumeInfo = {
             leftDate: null,
@@ -138,10 +141,14 @@ router.post('/', async (req, res) => {
         }
         //recruit와 resume JOIN 해서 recruitIdx, companyIdx 가져옴
         const myresumeSelectQuery = 'SELECT resumeIdx, resume.recruitIdx, companyIdx, recruitJobType, recruitStartDate, recruitExpireDate FROM resume JOIN recruit ON resume.recruitIdx=recruit.recruitIdx WHERE resume.userIdx=? ORDER BY recruitExpireDate';
+        console.log('3333333333333333')
         const myresumeSelectResult = await db.queryParam_Parse(myresumeSelectQuery, returnedData.userIdx);
+        console.log('4')
         if (!myresumeSelectResult) {
+            console.log('5')
             res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, responseMessage.RESUME_WHOLE_SELECT_FAIL));
         } else {
+            console.log(' 6')
             var myresumeInfosend = Array();
 
             for (var i = 0; i < myresumeSelectResult.length; i++) {
@@ -153,6 +160,7 @@ router.post('/', async (req, res) => {
                 myresumeInfo.recruitJobType = myresumeSelectResult[i].recruitJobType; //3)
 
                 const companyNameSelectQuery = 'SELECT companyName FROM company WHERE companyIdx=?';
+                
                 const companyNameSelectResult = await db.queryParam_Parse(companyNameSelectQuery, companyIdx);
                 myresumeInfo.companyName = companyNameSelectResult[0].companyName; //2) 
 
@@ -177,37 +185,41 @@ router.post('/', async (req, res) => {
                     myresumeInfo.leftDate = diff;
                     myresumeInfo.expireCheck = true;
                     console.log(myresumeInfo.leftDate)
+                    console.log('8')
                 }
                 
 
                 myresumeSelectResult[i].leftDate = myresumeInfo.leftDate;
                 myresumeSelectResult[i].companyName = myresumeInfo.companyName;
                 myresumeSelectResult[i].expireCheck = myresumeInfo.expireCheck;
-
+                console.log('9')
                 myresumeInfosend.push(myresumeSelectResult[i]);
+                console.log('10')
                 myresumeInfosend.sort(function(left,right){
+                    console.log('11')
                     return left.leftDate-right.leftDate
                 });
 
-                //마감인 것 밑으로 내리기
-                var index;
-                for(i=0;i<myresumeInfosend.length;i++){
-                    if(myresumeInfosend[i].leftDate<0) {
-                        index=i;
-                    }
-                }
+                // //마감인 것 밑으로 내리기
+                // var index;
+                // for(i=0;i<myresumeInfosend.length;i++){
+                //     if(myresumeInfosend[i].leftDate<0) {
+                //         index=i;
+                //     }
+                // }
                 
-                for(i=0;i<index;i++){
-                    var temp=Array();
-                    temp=myresumeInfosend[i];
-                    myresumeInfosend.shift();
-                    myresumeInfosend.push(temp);
-                }
+                // for(i=0;i<index;i++){
+                //     var temp=Array();
+                //     temp=myresumeInfosend[i];
+                //     myresumeInfosend.shift();
+                //     myresumeInfosend.push(temp);
+                // }
                 
                 console.log('myresumeInfosend');
                 console.log(myresumeInfosend);
                 
             }   
+            console.log('12');
             res.status(200).send(utils.successTrue(statusCode.OK, responseMessage.RESUME_WHOLE_SELECT_SUCCESS, myresumeInfosend));
 
         }

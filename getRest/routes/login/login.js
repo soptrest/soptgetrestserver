@@ -17,6 +17,7 @@ const jwt = require("../../config/jwt");
     출력 : userIdx, token
 */
 router.post('/', async (req, res) => {
+    console.log(req.body);
     const userEmail = req.body.userEmail;
     const userPassword = req.body.userPassword;
 
@@ -36,11 +37,12 @@ router.post('/', async (req, res) => {
             if(selectUserResult[0].userPassword == hashedPw.hashedPassword){
                 
                 let nowTimeDate = new Date();
-                nowTimeDate.setDate(nowTimeDate.getDate() + 1);
+                nowTimeDate.setDate(nowTimeDate.getDate() + 2);
                 const timestamp = nowTimeDate.getTime() / 1000;
                 const userToken = jwt.sign(selectUserResult[0]);
                 const returnData = {    
                     userIdx : selectUserResult[0].userIdx,
+                    userName : selectUserResult[0].userName,
                     userToken : userToken.token,
                     timestamp : timestamp
                 }
