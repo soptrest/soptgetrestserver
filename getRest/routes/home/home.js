@@ -81,9 +81,9 @@ router.get('/portfolio', async (req, res) => {
 
 router.get('/', async (req, res) => {
     const returnedData = await tokenVerify.isLoggedin(req.headers.authorization, res);
-
+    console.log(req.body);
     //유저 모든 포트폴리오 (오름차순)
-    if (returnedData != -1) {
+    if (returnedData != -1 && returnedData != -2 && returnedData != -3) {
         const selectPortfolioAllQuery = `SELECT * FROM portfolio WHERE userIdx = ${returnedData.userIdx} ORDER BY portfolioStartDate`;
         const selectPortfolioAllResult = await db.queryParam_None(selectPortfolioAllQuery);
 
@@ -169,12 +169,9 @@ router.get('/', async (req, res) => {
                     graphYear += 1;
                 }
             }
+            console.log(graphCountArr);
 
-            if (!graphCountArr.length) {
-                res.status(200).send(utils.successTrue(statusCode.OK, resMessage.NULL_VALUE, graphCountArr));
-            } else {
-                res.status(200).send(utils.successTrue(statusCode.OK, resMessage.HOME_GRAPH_SUCCESS, graphCountArr));
-            }
+            res.status(200).send(utils.successTrue(statusCode.OK, resMessage.HOME_GRAPH_SUCCESS, graphCountArr));
         }
     }
 });
