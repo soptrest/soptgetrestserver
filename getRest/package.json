@@ -14,7 +14,7 @@
     "crypto": "^1.0.1",
     "crypto-promise": "^2.1.0",
     "debug": "~2.6.9",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "growl": "^1.10.5",
     "http-errors": "~1.6.3",
     "install": "^0.13.0",
